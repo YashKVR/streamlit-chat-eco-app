@@ -1,6 +1,12 @@
+import openai
 import streamlit as st
 
-st.title("Echo Bot")
+st.title("ChatGPT Clone")
+
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+if "openai_model" not in st.session_state:
+    st.session_state["openai_model"] = "gpt-3.5-turbo"
 
 #Initialize chat history
 if "messages" not in st.session_state:
@@ -19,11 +25,18 @@ if prompt := st.chat_input("What's Up?"):   # assigning prompt variable and chec
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    response = f"Echo: {prompt}"
-
-    #Display assistant response in chat message container
     with st.chat_message("assistant"):
-        st.markdown(response)
-
-    # Add assistant response to chat history                            
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        message_placeholder = st.empty()
+        full_response = ""
+        for response in openai.ChatCompletion.create(
+            model=st.session_state["openai_model"],
+            messages=[
+                {"role":m["role"], "content": m["content"]}
+                for m in st.session_state.messages
+            ],
+            stream=True,
+        ):
+            full_response += response.choices[0].delta.get("content", "")
+            message_placeholder.markdown(full_response + "| ")
+        message_placeholder.markdown(full_response)
+    st.session_state.messages.append({"role":"assistant", "content": full_response})        
